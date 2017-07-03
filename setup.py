@@ -10,7 +10,7 @@ setup(
     keywords='PNML petri-net eventstore state-machine',
     packages=find_packages(),
     include_package_data=True,
-    install_requires=['pg8000==1.10.6'],
+    install_requires=['bitwrap-machine', 'pg8000==1.10.6'],
     long_description="""
 # Bitwrap-psql
 
