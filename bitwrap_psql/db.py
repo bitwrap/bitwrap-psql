@@ -57,17 +57,10 @@ def drop_schema(schema, **kwargs):
     try_execute("DROP SCHEMA %s" % schema)
 
 
-# consider renaming sine it only creates a single machinedb
-def create_db(machine, **kwargs):
-    """ create/drop/recreate database """
-
-    if kwargs['drop']:
-        recreate_db(**kwargs)
-
-    create_schema(machine, **kwargs)
-
 def create_schema(machine, **kwargs):
     """ add a new schema to an existing db """
+
+    schema = kwargs.get('schema_name', machine.name)
 
     conn = connect(**kwargs)
     conn.autocommit = True
@@ -75,12 +68,12 @@ def create_schema(machine, **kwargs):
 
     txn.execute("""
     CREATE schema %s
-    """ % machine.name)
+    """ % schema)
 
 
     txn.execute("""
     CREATE DOMAIN %s.token as smallint CHECK(VALUE >= 0 and VALUE <= %i)
-    """ % (machine.name, UNSIGNED_MAX))
+    """ % (schema, UNSIGNED_MAX))
 
     num_places = len(machine.machine['state'])
     columns = [''] * num_places
@@ -89,17 +82,17 @@ def create_schema(machine, **kwargs):
 
     for key, props  in  machine.net.places.items():
         i = props['offset']
-        columns[i] = ' %s %s.token' % (key, machine.name)
+        columns[i] = ' %s %s.token' % (key, schema)
         vector[i] = ' %s int4' % key
         delta[i] = " (state).%s + txn.%s" % (key, key)
 
     txn.execute("""
     CREATE TYPE %s.state as ( %s )
-    """ % (machine.name, ','.join(columns)))
+    """ % (schema, ','.join(columns)))
 
     txn.execute("""
     CREATE TYPE %s.vector as ( %s )
-    """ % (machine.name, ','.join(vector)))
+    """ % (schema, ','.join(vector)))
 
     txn.execute("""
     CREATE TYPE %s.event as (
@@ -107,7 +100,7 @@ def create_schema(machine, **kwargs):
       oid varchar(255),
       rev int4
     )
-    """ % (machine.name))
+    """ % (schema))
 
     txn.execute("""
     CREATE TYPE %s.event_payload as (
@@ -117,7 +110,7 @@ def create_schema(machine, **kwargs):
       payload json,
       timestamp timestamp
     )
-    """ % (machine.name))
+    """ % (schema))
 
     txn.execute("""
     CREATE TYPE %s.current_state as (
@@ -130,7 +123,7 @@ def create_schema(machine, **kwargs):
       modified timestamp,
       created timestamp
     )
-    """ % (machine.name, machine.name))
+    """ % (schema, schema))
 
     inital_vector = machine.net.inital_vector()
 
@@ -149,19 +142,19 @@ def create_schema(machine, **kwargs):
       created timestamp DEFAULT now(),
       modified timestamp DEFAULT now()
     );
-    """ % (machine.name, machine.name, tuple(inital_vector), machine.name))
+    """ % (schema, schema, tuple(inital_vector), schema))
 
     txn.execute("""
     CREATE TABLE %s.transitions (
       action VARCHAR(255) PRIMARY KEY,
       vector %s.vector
     );
-    """ % (machine.name, machine.name))
+    """ % (schema, schema))
 
     for key, props  in  machine.net.transitions.items():
         txn.execute("""
         INSERT INTO %s.transitions values('%s', %s)
-        """ % (machine.name, key, tuple(props['delta'])))
+        """ % (schema, key, tuple(props['delta'])))
 
     txn.execute("""
     CREATE TABLE %s.events (
@@ -172,15 +165,15 @@ def create_schema(machine, **kwargs):
       hash VARCHAR(32) NOT NULL,
       timestamp timestamp DEFAULT NULL
     );
-    """ % (machine.name, machine.name))
+    """ % (schema, schema))
 
     txn.execute("""
     ALTER TABLE %s.events ADD CONSTRAINT %s_oid_seq_pkey PRIMARY KEY (oid, seq);
-    """ % (machine.name, machine.name))
+    """ % (schema, schema))
 
     txn.execute("""
     CREATE INDEX CONCURRENTLY %s_hash_idx on %s.events (hash);
-    """ % (machine.name, machine.name))
+    """ % (schema, schema))
 
 
     function_template = Template("""
@@ -217,7 +210,7 @@ def create_schema(machine, **kwargs):
     
     fn_sql = function_template.substitute(
         MARKER='$$',
-        name=machine.name,
+        name=schema,
         var1='$1',
         var2='$2',
         var3='$3',
@@ -232,5 +225,5 @@ def create_schema(machine, **kwargs):
       FOR EACH ROW EXECUTE PROCEDURE ${name}.vclock();
     """)
 
-    trigger_sql = function_template.substitute(name=machine.name)
+    trigger_sql = function_template.substitute(name=schema)
     txn.execute(trigger_sql)
