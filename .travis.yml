@@ -1,0 +1,9 @@
+language: python
+python:
+  - '2.7'
+before_script:
+  - psql -c "ALTER USER postgres WITH password 'bitwrap'" -U postgres
+script:
+  - PYTHONPATH=./ python test/test_schema_migration.py
+addons:
+  postgresql: "9.4"
