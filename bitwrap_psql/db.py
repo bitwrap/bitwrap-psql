@@ -107,6 +107,7 @@ def create_schema(machine, **kwargs):
       id varchar(32),
       oid varchar(255),
       seq int4,
+      action varchar(255),
       payload json,
       timestamp timestamp
     )
