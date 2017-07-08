@@ -141,7 +141,7 @@ class Events(object):
 
         sql = """
         SELECT
-            row_to_json((hash, oid, seq, payload, timestamp)::%s.event_payload)
+            row_to_json((hash, oid, seq, action, payload, timestamp)::%s.event_payload)
         FROM
             %s.events
         WHERE
