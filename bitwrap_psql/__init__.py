@@ -115,7 +115,7 @@ class States(object):
           to_json((ev.hash, st.oid, ev.action, st.rev, st.state, ev.payload, modified, created)::${name}.current_state)
         FROM
           ${name}.states st
-        JOIN
+        LEFT JOIN
           ${name}.events ev ON ev.oid = st.oid AND ev.seq = st.rev
         WHERE
           st.oid = '${oid}'
