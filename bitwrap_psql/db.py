@@ -39,9 +39,8 @@ def drop_schema(schema, **kwargs):
         try:
             txn.execute(sql)
         except:
-            print '__SQL_ERR__'
-            print sql
-            pass
+            print('__SQL_ERR__')
+            print(sql)
 
     try_execute("DROP TRIGGER %s_dispatch on %s.events" % (schema, schema))
     try_execute("DROP TABLE %s.transitions" % schema)
